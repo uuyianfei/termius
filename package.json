@@ -5,10 +5,26 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build && electron-builder",
-    "lint": "eslint .",
-    "preview": "vite preview"
+      "dev": "vite",
+      "build": "vite build",
+      "build:electron": "tsc -p tsconfig.electron.json && electron-builder",
+      "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && electronmon .\"",
+      "electron:build": "npm run build && npm run build:electron"
+  },
+  "build": {
+    "appId": "com.termius.app",
+    "productName": "Termius",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "asar": true
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.11.0",
