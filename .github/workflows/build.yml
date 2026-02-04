@@ -1,26 +1,51 @@
-name: Windows Build
+name: Build Termius (Windows)
 
-on: [workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:   # 允許手動觸發
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-    
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      
-      - run: npm ci
-      
-      - run: |
-          # 只构建 TypeScript 和 Electron
-          npx tsc -b
-          npx electron-builder --win --dir
-      
-      - uses: actions/upload-artifact@v4
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ──────────────── 編譯 Vite (渲染進程) ────────────────
+      - name: Build renderer (Vite)
+        run: npm run build
+
+      # ──────────────── 單獨編譯 Electron 主進程 ────────────────
+      - name: Compile Electron main process
+        run: npx tsc -p tsconfig.electron.json
+
+      # ──────────────── 使用 electron-builder 打包 Windows 版本 ────────────────
+      - name: Package with electron-builder
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          # 如果之後要自動發佈 release，可取消註解並設定 GH_TOKEN
+          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ──────────────── 上傳產出物（.exe + 安裝檔等） ────────────────
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: windows-app
-          path: dist/
+          name: termius-windows
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          retention-days: 14
